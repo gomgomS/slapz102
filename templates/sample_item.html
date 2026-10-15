@@ -16,6 +16,7 @@
     <div class="mt-6 text-sm leading-relaxed">{{ data.item.body }}</div>
     {% endif %}
     <form method="post" action="{{ url_for('sample_blueprint.delete', slug=data.item.slug) }}" class="mt-8">
+        <input type="hidden" name="csrf_token" value="{{ data.csrf_token }}">
         <button type="submit" class="btn-primary">Delete this item</button>
     </form>
 </article>

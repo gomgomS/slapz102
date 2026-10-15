@@ -4,8 +4,8 @@ import copy
 import pymongo
 import random
 
-import model
-import config
+from slapz102_core import model
+from slapz102_core import config
 
 from bson.objectid import ObjectId
 
@@ -60,7 +60,7 @@ def _convert_datetime_to_timestamp(date_time, IN_MILLISECONDS=True):
 # end def
 
 def _get_current_datetime(days=0, hours=0, minutes=0, seconds=0):
-    return datetime.datetime.utcnow() + datetime.timedelta(
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + datetime.timedelta(
         days=days, hours=hours, minutes=minutes, seconds=seconds
     )
 # end def

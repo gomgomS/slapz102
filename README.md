@@ -37,6 +37,10 @@ convention you need to follow.
 - **Auto-managed record fields**: every record gets `pkey`, `ipkey`,
   `rec_timestamp`, `rec_timestamp_str`, `is_deleted` automatically.
 - **Input sanitization** built in (`slapz102_stdlib/sanitize.py`).
+- **CSRF protection** built in (`slapz102_stdlib/csrf.py`) — session token on
+  every POST form, zero extra dependencies.
+- **Secret-key guard** — the app refuses to serve via a WSGI server while the
+  sample Flask secret is unchanged.
 - **Seed-on-boot sample module**: list / create / detail / soft-delete CRUD
   against MongoDB, wired end to end.
 - **Tailwind CSS v4** design system with a small token set
@@ -59,18 +63,21 @@ convention you need to follow.
 # 1. clone (or copy) the boilerplate
 git clone <your-repo-url> my-project && cd my-project
 
-# 2. virtual environment + dependencies
+# 2. create your local config (config.py is gitignored)
+cp slapz102_core/config_sample.py slapz102_core/config.py
+
+# 3. virtual environment + dependencies
 python3 -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# 3. make sure MongoDB is running
+# 4. make sure MongoDB is running
 mongod                            # or: systemctl start mongod
 
-# 4. run the dev server
+# 5. run the dev server
 ./start.sh                        # or: python3 server.py
 
-# 5. open the sample app
+# 6. open the sample app
 # http://localhost:5004
 ```
 
@@ -80,25 +87,34 @@ sanitized, written to MongoDB through the model layer, and listed back with its
 
 ## Configuration
 
-All deployment values are **environment variables with safe local defaults**,
-read once in [`slapz102_core/config.py`](slapz102_core/config.py):
-
-| Env var | Default | Purpose |
-|---|---|---|
-| `FLASK_SECRET_KEY` | `dev-only-unsafe-secret` | Flask session signing — **always override in production** |
-| `MONGO_URI` | `mongodb://127.0.0.1:27017/` | Base MongoDB URI (without the database name) |
-| `MONGO_DB_NAME` | `slapz` | Database name |
-| `PUBLIC_SITE_URL` | `http://localhost:5004` | Absolute base URL for Open Graph/share links |
-| `SITE_NAME` | `SLAPZ Boilerplate` | Brand name used by templates |
-| `PORT` | `5004` | Dev server port |
+**`slapz102_core/config.py` holds the unique values of YOUR project and is
+gitignored.** Each project starts from the committed template:
 
 ```bash
-export FLASK_SECRET_KEY="$(python3 -c 'import os; print(os.urandom(24))')"
-export MONGO_URI="mongodb+srv://user:pass@cluster.example.com/"
-export MONGO_DB_NAME="myapp"
-export SITE_NAME="My App"
-python3 server.py
+cp slapz102_core/config_sample.py slapz102_core/config.py
 ```
+
+Edit `config.py` directly, or override any value with an environment variable
+(`os.environ.get(...)` with the config value as default):
+
+| Value | Env override | Sample default | Purpose |
+|---|---|---|---|
+| `G_FLASK_SECRET` | `FLASK_SECRET_KEY` | `CHANGE-ME-BEFORE-DEPLOY` | Flask session signing — **generate a unique one per project** |
+| `mainDB` / `mainDB_string` | `MONGO_DB_NAME` / `MONGO_URI` | `slapz` / `mongodb://127.0.0.1:27017/` | MongoDB database (URI without the db name) |
+| `G_PUBLIC_SITE_URL` | `PUBLIC_SITE_URL` | `http://localhost:5004` | Absolute base URL for Open Graph/share links |
+| `G_SITE_NAME` | `SITE_NAME` | `SLAPZ Boilerplate` | Brand name used by templates |
+| `JKTA_TZ` | `TZ_OFFSET_HOURS` | `7` | Hours added to UTC for `rec_timestamp` fields |
+| — | `PORT` | `5004` | Dev server port |
+
+Generate a secret key:
+
+```bash
+python3 -c "import os; print(os.urandom(24).hex())"
+```
+
+> **Safety guard**: when the app is served by a real WSGI server (imported as a
+> module, not run via `python3 server.py` / `./start.sh`), it **refuses to
+> start** while `G_FLASK_SECRET` is still the sample value.
 
 Inside the code, always read config through the module — never hardcode:
 
@@ -139,12 +155,15 @@ MongoDB
 ```
 .
 ├── server.py                  # entrypoint — blueprint registration only
-├── start.sh                   # dev launcher (flask run --debug)
+├── start.sh                   # dev launcher (flask run)
 ├── requirements.txt           # Flask + PyMongo
+├── requirements-dev.txt       # pytest (dev only)
 ├── package.json               # Node — ONLY for the Tailwind CSS build
+├── tests/                     # pytest suite for the sample module
 │
 ├── slapz102_core/             # FRAMEWORK CORE — do not refactor
-│   ├── config.py              # env-backed constants (see Configuration)
+│   ├── config.py              # YOUR local values (gitignored)
+│   ├── config_sample.py       # committed template → copy to config.py
 │   ├── database.py            # Mongo connection + record factory (new/load)
 │   ├── model.py               # schema registry `db` + `mongo_model` class
 │   └── helper.py              # response_msg JSON envelope
@@ -159,6 +178,7 @@ MongoDB
 │
 ├── slapz102_stdlib/           # utilities — check here BEFORE writing a helper
 │   ├── sanitize.py            # clean_html_dic / clean_html / clean_rich_html
+│   ├── csrf.py                # get_token / validate (all POST forms)
 │   └── idgen.py               # _get_api_call_id()
 │
 ├── slapz102_settings/         # reserved extension point (empty, on sys.path)
@@ -196,14 +216,17 @@ def index():
 
 ```python
 def html_create():
+    if not csrf.validate():
+        return redirect(url_for("sample_blueprint.index", error="Invalid session, please try again"))
+    # end if
     # every user input passes through the sanitizer before reaching a proc
     params = sanitize.clean_html_dic(request.form.to_dict())
     proc = sample_proc()
     result = proc.create_item(params)
     if result.get("status") != "SUCCESS":
-        return redirect(url_for("index", error=result.get("desc", "")))
+        return redirect(url_for("sample_blueprint.index", error=result.get("desc", "")))
     # end if
-    return redirect(url_for("index"))
+    return redirect(url_for("sample_blueprint.index"))
 # end def
 ```
 
@@ -372,6 +395,43 @@ Both key styles (`status`/`desc`/`data` **and** `message_action`/
 `message_desc`/`message_data`) are always kept in sync by the helper — never
 change these response keys.
 
+## Security built into the framework
+
+- **Input sanitization** — `sanitize.clean_html_dic()` on every user input
+  (see above).
+- **CSRF protection** — `slapz102_stdlib/csrf.py`, no extra dependencies.
+  Every POST form carries the session token, and every POST view validates it:
+
+```html
+<!-- in the template, inside every <form method="post"> -->
+<input type="hidden" name="csrf_token" value="{{ data.csrf_token }}">
+```
+
+```python
+# at the top of the view function handling the POST
+from slapz102_stdlib import csrf
+
+if not csrf.validate():
+    return redirect(url_for("sample_blueprint.index", error="Invalid session, please try again"))
+# end if
+```
+
+- **Session cookie hardening** — `SESSION_COOKIE_HTTPONLY` and
+  `SESSION_COOKIE_SAMESITE="Lax"` are set in `server.py`.
+- **Secret-key guard** — a WSGI server import refuses to start while
+  `G_FLASK_SECRET` is still the sample value.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt      # pytest (dev only)
+python3 -m pytest tests/ -v
+```
+
+The suite runs against a scratch database (`slapz_test`) and covers the whole
+sample flow: rendering, CSRF rejection, create, XSS sanitization, validation,
+detail pages, and soft delete.
+
 ## Templates & CSS
 
 - Pages extend `templates/base.html`: blocks `title`, `og_title`,
@@ -398,7 +458,8 @@ npm run build:css    # one-off build → static/v2/app.output.css
    (copy `sample_blueprint.py`).
 4. **View** — `slapz102_modules/view/<feature>/view_<feature>.py`
    (copy `view_sample.py`).
-5. **Template** — `templates/<feature>.html` extending `base.html`.
+5. **Template** — `templates/<feature>.html` extending `base.html`
+   (remember the hidden `csrf_token` input in every POST form).
 6. **Register** in `server.py`:
 
 ```python
@@ -423,16 +484,20 @@ sys.path.append("slapz102_storage")
 # 2. sanitize every input
 params = sanitize.clean_html_dic(request.form.to_dict())
 
-# 3. closing comments on every block
+# 3. every POST form carries the CSRF token and every POST view validates it
+#    <input type="hidden" name="csrf_token" value="{{ data.csrf_token }}">
+#    if not csrf.validate(): redirect with error
+
+# 4. closing comments on every block
 def anything():
     if x:
         pass
     # end if
 # end def
 
-# 4. no f-strings, no relative imports, `== None` comparisons
-# 5. DB access only inside procs; blueprint routes only delegate to views
-# 6. soft delete only; every query filters {"is_deleted": False}
+# 5. no f-strings, no relative imports, `== None` comparisons
+# 6. DB access only inside procs; blueprint routes only delegate to views
+# 7. soft delete only; every query filters {"is_deleted": False}
 ```
 
 ## Troubleshooting
@@ -442,5 +507,7 @@ def anything():
 | `ServerSelectionTimeoutError` on first request | MongoDB isn't running — start `mongod`, or set `MONGO_URI` |
 | Page renders unstyled | `static/v2/app.output.css` missing — run `npm install && npm run build:css` |
 | `ValueError: SETTING_NON_EXISTING_FIELD` | You called `rec.put()` with a key not declared in `model.py` — add it to the schema first |
+| `RuntimeError: G_FLASK_SECRET is still the sample value` | Generate a secret (`python3 -c "import os; print(os.urandom(24).hex())"`) and set it in `slapz102_core/config.py` |
+| Form submit redirects with "Invalid session" | The CSRF token is missing/stale — make sure the form includes the hidden `csrf_token` input |
 | Port already in use | `PORT=5005 python3 server.py` |
 | Changes to `input.css` not visible | You edited the generated file, or didn't rebuild — edit `input.css`, run `npm run build:css`, hard-refresh |

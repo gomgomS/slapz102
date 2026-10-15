@@ -12,6 +12,24 @@ from slapz102_core import config
 
 app = Flask(__name__)
 app.secret_key = config.G_FLASK_SECRET
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+# Refuse to serve outside development while the sample secret is unchanged.
+# Direct dev runs ("python3 server.py") and FLASK_ENV=development are allowed.
+KNOWN_UNSAFE_SECRETS = ["CHANGE-ME-BEFORE-DEPLOY", "dev-only-unsafe-secret"]
+if (
+    app.secret_key in KNOWN_UNSAFE_SECRETS
+    and __name__ != "__main__"
+    and os.environ.get("FLASK_ENV") != "development"
+    and os.environ.get("FLASK_DEBUG") != "1"
+):
+    raise RuntimeError(
+        "G_FLASK_SECRET is still the sample value. Generate one with: "
+        "python3 -c \"import os; print(os.urandom(24).hex())\" "
+        "and set it in slapz102_core/config.py"
+    )
+# end if
 
 # Import one blueprint per feature module, then register it below.
 # Adding a new feature = create slapz102_modules/<feature>/ with

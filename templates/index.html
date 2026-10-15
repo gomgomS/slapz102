@@ -14,6 +14,7 @@
 
 <section class="mb-12">
     <form method="post" action="{{ url_for('sample_blueprint.create') }}" class="space-y-3">
+        <input type="hidden" name="csrf_token" value="{{ data.csrf_token }}">
         {% if data.form_error %}
         <p class="border border-red-600 px-3 py-2 text-sm text-red-600">{{ data.form_error }}</p>
         {% endif %}
@@ -47,6 +48,7 @@
                     </p>
                 </div>
                 <form method="post" action="{{ url_for('sample_blueprint.delete', slug=item.slug) }}">
+                    <input type="hidden" name="csrf_token" value="{{ data.csrf_token }}">
                     <button type="submit" class="text-xs uppercase tracking-widest text-mute hover:text-red-600">
                         Delete
                     </button>

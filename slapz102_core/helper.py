@@ -3,7 +3,7 @@ import sys
 sys.path.append("slapz102_core")
 sys.path.append("slapz102_stdlib")
 
-import idgen
+from slapz102_stdlib import idgen
 
 class response_msg:
 

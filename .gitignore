@@ -17,11 +17,13 @@ env/
 ENV/
 
 # Environment variables and secrets — never commit real credentials.
-# slapz102_core/config.py IS committed: it reads env vars and ships safe
-# local defaults only. Override via environment, not by editing it.
+# slapz102_core/config.py holds unique per-project values (secret key, DB
+# name, public URL) and is NOT committed; config_sample.py is the committed
+# template each project copies to config.py.
 .env
 .env.*
 *.env
+slapz102_core/config.py
 credentials*.json
 *.pem
 *.key

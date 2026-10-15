@@ -1,20 +1,21 @@
 import os
 
 # ---------------------------------------------------------------------------
-# Framework configuration.
+# Framework configuration — LOCAL FILE, NOT COMMITTED TO GIT.
 #
-# Every deployment-specific value is read from an environment variable with a
-# safe local default, so a fresh clone runs out of the box and real projects
-# only need to export env vars (or use a .env file they manage themselves).
+# Each project keeps its own copy:  cp slapz102_core/config_sample.py slapz102_core/config.py
+# config.py is listed in .gitignore so unique values (secret key, DB name,
+# public URL) never reach the repository.
 #
 # Usage in modules:  from slapz102_core import config  ->  config.mainDB
 # ---------------------------------------------------------------------------
 
-# Flask session signing secret. ALWAYS override in production:
-#   export FLASK_SECRET_KEY="$(python3 -c 'import os; print(os.urandom(24))')"
-G_FLASK_SECRET = os.environ.get("FLASK_SECRET_KEY", "dev-only-unsafe-secret")
+# Flask session signing secret — unique per project, keep it private:
+#   python3 -c "import os; print(os.urandom(24).hex())"
+G_FLASK_SECRET = os.environ.get("FLASK_SECRET_KEY", "603ac68715041cd04bb9661ef0ad8ed23f172bfceb642a47")
 
-G_HOME_PATH = os.getcwd()
+# Repo root, independent of the folder the server is launched from
+G_HOME_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 G_STATIC_URL_PATH = "/static"
 G_UPLOAD_PATH = G_HOME_PATH + G_STATIC_URL_PATH + "/upload"
 G_UPLOAD_URL_PATH = G_STATIC_URL_PATH + "/upload"
@@ -40,5 +41,5 @@ G_DATABASE_CONNECT = [
     {"dbname": mainDB, "dbstring": mainDB_string}
 ]
 
-# Timestamp offset (in hours) applied to rec_timestamp fields by the core.
-JKTA_TZ = 7
+# Offset in hours added to UTC when building rec_timestamp fields
+JKTA_TZ = int(os.environ.get("TZ_OFFSET_HOURS", "7"))

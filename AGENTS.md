@@ -155,6 +155,21 @@ params = sanitize.clean_html_dic(request.form.to_dict())
 - For rich HTML (WYSIWYG) content use `sanitize.clean_rich_html(value)`.
 - Never call `html.escape` directly from a view or proc — use the stdlib.
 
+## 6b. CSRF (MANDATORY on every POST form)
+
+- Templates: every `<form method="post">` contains
+  `<input type="hidden" name="csrf_token" value="{{ data.csrf_token }}">`
+  (the view passes `csrf_token` via the data dict).
+- Views: the first thing a POST handler does is validate:
+
+```python
+from slapz102_stdlib import csrf
+
+if not csrf.validate():
+    return redirect(url_for("sample_blueprint.index", error="Invalid session, please try again"))
+# end if
+```
+
 ## 7. Error handling (MANDATORY)
 
 Blueprint routes wrap their call:
@@ -172,13 +187,17 @@ Do not swallow exceptions silently and do not leak tracebacks to the user.
 
 ## 8. Configuration
 
-- All deployment values come from `slapz102_core/config.py`, which reads
-  environment variables (`FLASK_SECRET_KEY`, `MONGO_URI`, `MONGO_DB_NAME`,
-  `PUBLIC_SITE_URL`, `SITE_NAME`, `PORT`).
+- `slapz102_core/config.py` holds the project's unique values and is
+  **gitignored**; `slapz102_core/config_sample.py` is the committed template.
+  Never commit a real `config.py`, and never move unique values elsewhere.
+- Values can also be overridden by environment variables (`FLASK_SECRET_KEY`,
+  `MONGO_URI`, `MONGO_DB_NAME`, `PUBLIC_SITE_URL`, `SITE_NAME`,
+  `TZ_OFFSET_HOURS`, `PORT`).
 - Access config as `from slapz102_core import config` → `config.mainDB`,
   `config.G_SITE_NAME`, ...
 - **Never hardcode** URLs, credentials, DB names, or secrets in a module.
-  If a new setting is needed, add an env-backed constant to `config.py`.
+  If a new setting is needed, add an env-backed constant to both
+  `config.py` and `config_sample.py`.
 
 ## 9. Frontend rules
 
@@ -192,11 +211,15 @@ Do not swallow exceptions silently and do not leak tracebacks to the user.
 - Do not introduce other CSS frameworks, bundlers, or JS build steps. Node is
   used ONLY for the Tailwind build.
 
-## 10. Dependencies
+## 10. Dependencies and tests
 
 - Python deps: only Flask (>=3) and PyMongo (>=4). If a new package is truly
   required, add it to `requirements.txt` with a pinned range and say so in
-  the PR/commit description.
+  the PR/commit description. Dev-only tools (pytest) go in
+  `requirements-dev.txt`.
+- `tests/` holds pytest tests that run against the scratch database
+  `slapz_test`. Never break the suite — run `python3 -m pytest tests/`
+  before considering work finished.
 - Do not add task queues, ORMs, migration tools, or "modernization" layers.
   This framework is intentionally minimal.
 
@@ -210,8 +233,10 @@ Do not swallow exceptions silently and do not leak tracebacks to the user.
 5. Register the blueprint in `server.py` (import + `app.register_blueprint`).
 6. If new CSS classes are needed: tokens/components in `input.css`, then
    rebuild the output CSS.
-7. Verify: server starts, the new route renders, POST inputs are sanitized,
-   and records appear in MongoDB.
+7. Add/extend tests in `tests/` for the new flow, then run
+   `python3 -m pytest tests/ -v` (all tests must pass).
+8. Verify: server starts, the new route renders, POST inputs are sanitized,
+   CSRF validates, and records appear in MongoDB.
 
 ## 12. Absolutely do NOT
 
@@ -222,7 +247,8 @@ Do not swallow exceptions silently and do not leak tracebacks to the user.
   (`sanitize`, `idgen`).
 - Do not use relative imports, f-strings, or type annotations in existing
   files that don't already have them.
-- Do not commit `.env` files, credentials, logs, or `static/upload/` content.
+- Do not commit `.env` files, credentials, `slapz102_core/config.py`, logs,
+  or `static/upload/` content.
 - Do not remove the closing comments (`# end ...`) — they are part of the
   house style.
 - Do not switch the app to Application factories, Blueprints-with-prefix
