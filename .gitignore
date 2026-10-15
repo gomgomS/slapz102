@@ -1,0 +1,73 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+venv/
+venv*/
+.venv/
+env/
+ENV/
+
+# Environment variables and secrets — never commit real credentials.
+# slapz102_core/config.py IS committed: it reads env vars and ships safe
+# local defaults only. Override via environment, not by editing it.
+.env
+.env.*
+*.env
+credentials*.json
+*.pem
+*.key
+*.p12
+
+# Runtime files
+logs/
+*.log
+*.pid
+*.sqlite
+*.sqlite3
+instance/
+flask_session/
+
+# User uploads (runtime data) — keep the folder, ignore its contents
+static/upload/*
+!static/upload/.gitkeep
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Node dependencies and tool logs (Node is only used for the CSS build)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE and OS-specific files
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Database exports and archives
+*.dump
+*.bson
+*.gz
+*.archive
+*.zip
+*.tar
+*.tar.gz

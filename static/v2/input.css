@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * SLAPZ design tokens (Tailwind v4).
+ *
+ * Edit this file, then rebuild the output:
+ *     npm run build:css     (one-off)
+ *     npm run dev:css       (watch during development)
+ * NEVER edit app.output.css — it is generated.
+ * ------------------------------------------------------------------------- */
+
+@theme {
+    --color-primary: #000000;
+    --color-primary-hover: #111111;
+    --color-dark: #000000;
+    --color-light: #f5f5f5;
+    --color-mute: #6b6b6b;
+    --color-line: #e6e6e6;
+    --color-danger: #dc2626;
+    --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        font-family: var(--font-display);
+        color: #000;
+        background: #fff;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    button {
+        cursor: pointer;
+    }
+}
+
+/* ——— Components ——— */
+
+.btn-primary {
+    display: inline-block;
+    background: var(--color-primary);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border: 1px solid var(--color-primary);
+}
+
+.btn-primary:hover {
+    background: var(--color-primary-hover);
+}
