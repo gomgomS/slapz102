@@ -20,10 +20,13 @@ convention you need to follow.
 6. [The sample module (reference implementation)](#the-sample-module-reference-implementation)
 7. [Working with `model.py` (the schema registry)](#working-with-modelpy-the-schema-registry)
 8. [stdlib & core helpers](#stdlib--core-helpers)
-9. [Templates & CSS](#templates--css)
-10. [Adding a new feature module](#adding-a-new-feature-module)
-11. [Conventions cheat-sheet](#conventions-cheat-sheet)
-12. [Troubleshooting](#troubleshooting)
+9. [Security built into the framework](#security-built-into-the-framework)
+10. [Templates & CSS](#templates--css)
+11. [Tests](#tests)
+12. [Adding a new feature module](#adding-a-new-feature-module)
+13. [Conventions cheat-sheet](#conventions-cheat-sheet)
+14. [Quality assessment](#quality-assessment)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -499,6 +502,29 @@ def anything():
 # 6. DB access only inside procs; blueprint routes only delegate to views
 # 7. soft delete only; every query filters {"is_deleted": False}
 ```
+
+## Quality assessment
+
+Assessed by an AI code review (Claude) after the 2026-10 cleanup and hardening
+round — kept here as an honest snapshot of where the framework stands.
+
+**Overall: 8 / 10** as a personal/team boilerplate · 6.5 / 10 as a public framework
+
+| Category | Score | Notes |
+|---|---|---|
+| Architecture & layering | 9/10 | blueprint → view → proc separation, enforced consistently; package imports and cwd-independent paths |
+| Data layer design | 7/10 | schema registry, auto fields, soft delete; `mongo_model.update()`/`delete()` remain thin vs. the handle-update convention |
+| Security | 8/10 | CSRF on all forms, sanitization everywhere, session hardening, secret guard; no auth sample yet |
+| Developer experience | 8.5/10 | two pip deps, one-command run, working sample module, full docs |
+| Maintainability & testing | 7/10 | pytest suite covers the sample flow; import-time DB handle and `print()` logging remain |
+| Documentation | 9/10 | README + AGENTS.md cover setup, patterns, and AI rules |
+
+**Known path to 9/10** (kept honest, in priority order):
+
+1. Auth reference module (login/session against `db_user`)
+2. Logger instead of `print(traceback...)` in blueprints
+3. Resolve or document the `mongo_model.update()`/`delete()` API
+4. CI workflow running the test suite + security headers
 
 ## Troubleshooting
 
